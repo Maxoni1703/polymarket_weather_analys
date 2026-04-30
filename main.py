@@ -23,4 +23,4 @@ if __name__ == "__main__":
     threading.Thread(target=open_browser, daemon=True).start()
     
     print("Starting Django local web server... (Press Ctrl+C to quit)")
-    subprocess.run([sys.executable, "manage.py", "runserver", "127.0.0.1:8005"])
+    subprocess.run([sys.executable, "manage.py", "runserver", "127.0.0.1:8005", "--insecure"])

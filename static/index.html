@@ -63,10 +63,6 @@
 
                 <div class="ai-settings">
                     <div class="setting-row">
-                        <span>API Ключ</span>
-                        <input type="password" id="ai-key" placeholder="GenAPI API Key">
-                    </div>
-                    <div class="setting-row">
                         <span>Нейросеть</span>
                         <select id="ai-model"></select>
                     </div>
@@ -136,9 +132,17 @@
         <div class="result-card" id="res-{id}">
             <div class="result-main">
                 <div>
-                    <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 4px;">INDEX: {id}</div>
-                    <div class="temp-primary" id="res-temp-main-{id}">--</div>
-                    <div class="temp-sub" id="res-temp-sub-{id}">--</div>
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px;">
+                        <span style="font-size: 10px; color: var(--text-secondary);">INDEX: {id}</span>
+                        <span id="res-time-{id}" style="font-size: 10px; color: var(--text-muted);">[--:--]</span>
+                    </div>
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div id="res-icon-{id}" style="font-size: 20px;">--</div>
+                        <div>
+                            <div class="temp-primary" id="res-temp-main-{id}">--</div>
+                            <div class="temp-sub" id="res-temp-sub-{id}">--</div>
+                        </div>
+                    </div>
                 </div>
                 <div style="text-align: right;">
                     <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 4px;">SIGNAL</div>
@@ -170,6 +174,6 @@
         </div>
     </template>
 
-    <script src="/static/app.js"></script>
+    <script src="/static/app.js?v=1.1"></script>
 </body>
 </html>

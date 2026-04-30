@@ -1,6 +1,7 @@
 import json
 import os
 import requests as _req
+import traceback
 from django.http import JsonResponse, HttpResponse, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
 
@@ -9,6 +10,21 @@ from weather import fetch_multimodel_forecast, fetch_wunderground, analyze_forec
 from polymarket import fetch_prices_for_ranges
 from utils import get_local_time
 from ai_chat import free_weather_search, load_ai_config, save_ai_config, _SYS, MODELS, GENAPI_URL
+import uuid
+
+BOOT_ID = str(uuid.uuid4())
+
+def health_check(request):
+    # Returns the boot ID and the last modification time of the static folder to trigger reloads
+    static_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "static")
+    last_mod = 0
+    if os.path.exists(static_dir):
+        last_mod = max(os.path.getmtime(os.path.join(static_dir, f)) for f in os.listdir(static_dir) if os.path.isfile(os.path.join(static_dir, f)))
+    
+    return JsonResponse({
+        "boot_id": BOOT_ID,
+        "last_mod": last_mod
+    })
 
 def root(request):
     base_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -46,6 +62,7 @@ def update_settings(request):
         save_ai_config(data.get('api_key', ''), data.get('model_id', ''))
         return JsonResponse({"status": "ok"})
     except Exception as e:
+        traceback.print_exc()
         return JsonResponse({"error": str(e)}, status=500)
 
 @csrf_exempt
@@ -89,6 +106,7 @@ def analyze_city(request):
             "market_price": market_price
         })
     except Exception as e:
+        traceback.print_exc()
         return JsonResponse({"detail": str(e)}, status=500)
 
 def get_market_prices(request):

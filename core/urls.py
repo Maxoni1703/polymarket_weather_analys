@@ -10,4 +10,5 @@ urlpatterns = [
     path('api/search', views.trigger_search, name='trigger_search'),
     path('api/settings', views.update_settings, name='update_settings'),
     path('api/chat', views.chat_with_ai, name='chat_with_ai'),
+    path('api/health', views.health_check, name='health_check'),
 ]

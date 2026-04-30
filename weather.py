@@ -509,9 +509,13 @@ def compute_score(a, wunder, local_time, city_key, market_prob, range_idx, peak_
         rng_name = label
     else:
         mf = c2f(best_max_c)
-        LO = [None, 78, 81, 84, 86, 88]
-        HI = [78, 81, 84, 86, 88, None]
-        lo, hi = LO[range_idx], HI[range_idx]
+        # Ranges for Miami: 75 or below, 76-77, 78-79, 80-81, 82-83, 84-85, 86-87, 88-89, 90 or higher
+        LO = [None, 76, 78, 80, 82, 84, 86, 88, 90]
+        HI = [76, 78, 80, 82, 84, 86, 88, 90, None]
+        
+        # Ensure index is within bounds (safety check)
+        ridx = min(max(0, range_idx), len(LO)-1)
+        lo, hi = LO[ridx], HI[ridx]
         in_range = (lo is None or mf >= lo) and (hi is None or mf < hi)
         val_str = f"{mf:.0f}°F"
         rng_name = c["ranges"][range_idx]

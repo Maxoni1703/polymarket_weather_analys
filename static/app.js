@@ -2,7 +2,11 @@
 
 let APP_CONFIG = null;
 let CITIES_ORDER = ["london", "miami"];
-let LAST_RESULTS = {};
+let LAST_RESULTS = JSON.parse(sessionStorage.getItem('LAST_RESULTS') || '{}');
+
+function saveLastResults() {
+    sessionStorage.setItem('LAST_RESULTS', JSON.stringify(LAST_RESULTS));
+}
 
 document.addEventListener("DOMContentLoaded", () => {
     initApp();
@@ -11,7 +15,6 @@ document.addEventListener("DOMContentLoaded", () => {
     document.getElementById("auto-ai-toggle").addEventListener("change", (e) => {
         if(e.target.checked) showStatus("Алго ИИ: Активен", "var(--color-buy)");
         else showStatus("Алго ИИ: Отключен", "var(--text-secondary)");
-
     });
 
     // Enter key sending
@@ -132,10 +135,12 @@ function buildResultCard(ck) {
 }
 
 async function analyzeCity(cityKey) {
+    console.log(`[UI] Starting analysis for ${cityKey}`);
     toggleButtons(true);
     showStatus(`Загрузка рыночных данных: ${APP_CONFIG.cities[cityKey].name}...`, "var(--color-highlight)");
 
     await doAnalyze(cityKey);
+    console.log(`[UI] Analysis for ${cityKey} finished, calling wrapUpAnalysis`);
     wrapUpAnalysis([cityKey]);
 }
 
@@ -148,10 +153,8 @@ async function analyzeBoth() {
 }
 
 async function doAnalyze(ck) {
-    // Read UI state
     const dateStr = document.getElementById(`date-${ck}`).value;
     const rangeIdx = parseInt(document.getElementById(`range-${ck}`).value);
-    
     const priceRaw = document.getElementById(`price-${ck}-${rangeIdx}`).value.trim();
     const marketPrice = priceRaw ? parseFloat(priceRaw) : null;
 
@@ -163,6 +166,7 @@ async function doAnalyze(ck) {
             market_price: marketPrice
         };
 
+        console.log(`[API] POST /api/analyze`, req);
         const res = await fetch("/api/analyze", {
             method: "POST", headers: { "Content-Type": "application/json" },
             body: JSON.stringify(req)
@@ -170,16 +174,23 @@ async function doAnalyze(ck) {
 
         if(!res.ok) throw new Error(`HTTP ${res.status}`);
         const data = await res.json();
+        console.log(`[API] Analysis received:`, data);
         
         LAST_RESULTS[ck] = data;
+        saveLastResults();
         renderResult(ck, data);
 
     } catch(e) {
-        console.error(e);
+        console.error(`[API] Analysis failed:`, e);
         const card = buildResultCard(ck);
-        card.classList.add('active');
-        document.getElementById(`res-verdict-${ck}`).innerText = "❌ ОШИБКА";
-        document.getElementById(`res-verdict-${ck}`).style.color = "var(--color-sell)";
+        if (card) {
+            card.classList.add('active');
+            const v_el = document.getElementById(`res-verdict-${ck}`);
+            if(v_el) {
+                v_el.innerText = "❌ ОШИБКА";
+                v_el.style.color = "var(--color-sell)";
+            }
+        }
     }
 }
 
@@ -192,18 +203,21 @@ function renderResult(ck, data) {
     const sc = data.score;
     const lt = data.local_time;
 
-    document.getElementById(`res-time-${ck}`).innerText = `[${data.date} | ${lt.local_str}]`;
+    const time_el = document.getElementById(`res-time-${ck}`);
+    if(time_el) time_el.innerText = `[${data.date} | ${lt.local_str}]`;
     
-    // WX Icon mapped from config
     const icons = {0: "CLR", 1: "FEW", 2: "SCT", 3: "BKN", 45: "FG", 48: "FZFG", 51: "DZ", 53: "DZ", 61: "RA", 63: "RA", 65: "RA", 71: "SN", 73: "SN", 80: "SHRA", 82: "TSRA"};
-    document.getElementById(`res-icon-${ck}`).innerText = icons[a.wx_code] || "OBS";
+    const icon_el = document.getElementById(`res-icon-${ck}`);
+    if(icon_el) icon_el.innerText = icons[a.wx_code] || "OBS";
 
     const isF = ck === 'miami';
     const mainTemp = isF ? sc.best_max_f.toFixed(0) + "°F" : sc.best_max_c.toFixed(1) + "°C";
     const subTemp = isF ? sc.best_max_c.toFixed(1) + "°C" : sc.best_max_f.toFixed(0) + "°F";
     
-    document.getElementById(`res-temp-main-${ck}`).innerText = `Макс: ${mainTemp}`;
-    document.getElementById(`res-temp-sub-${ck}`).innerText = `(${subTemp})`;
+    const tmain_el = document.getElementById(`res-temp-main-${ck}`);
+    if(tmain_el) tmain_el.innerText = `Макс: ${mainTemp}`;
+    const tsub_el = document.getElementById(`res-temp-sub-${ck}`);
+    if(tsub_el) tsub_el.innerText = `(${subTemp})`;
 
     const w_el = document.getElementById(`res-wunder-${ck}`);
     if(w) {
@@ -227,7 +241,8 @@ function renderResult(ck, data) {
     document.getElementById(`res-verdict-${ck}`).style.color = sc.verdict.includes("ВХОДИТЬ") && !sc.verdict.includes("НЕ") ? "var(--color-buy)" : "var(--color-sell)";
     document.getElementById(`res-stake-${ck}`).innerText = `Объем: ${sc.bank}`;
     
-    document.getElementById(`res-rec-${ck}`).innerText = sc.mkt_rec ? `★ Рекомендация: ${sc.mkt_rec}` : "";
+    const rec_el = document.getElementById(`res-rec-${ck}`);
+    if(rec_el) rec_el.innerText = sc.mkt_rec ? `★ Рекомендация: ${sc.mkt_rec}` : "";
 
     document.getElementById(`res-prob-${ck}`).innerText = `${sc.our_prob.toFixed(0)}%`;
     
@@ -242,21 +257,23 @@ function renderResult(ck, data) {
 
     // Signals
     const sigCont = document.getElementById(`res-signals-${ck}`);
-    sigCont.innerHTML = "";
-    (sc.signals || []).forEach(sig => {
-        const [colName, msg] = sig;
-        let cHex = `var(--color-${colName})`;
-        if(colName === 'dim') cHex = 'var(--text-muted)';
-        if(colName === 'green') cHex = 'var(--color-buy)';
-        if(colName === 'red') cHex = 'var(--color-sell)';
-        if(colName === 'yellow') cHex = 'var(--color-warn)';
-        
-        const div = document.createElement('div');
-        div.className = "sig-item";
-        div.style.color = cHex;
-        div.innerHTML = `<span>> ${msg}</span>`;
-        sigCont.appendChild(div);
-    });
+    if(sigCont) {
+        sigCont.innerHTML = "";
+        (sc.signals || []).forEach(sig => {
+            const [colName, msg] = sig;
+            let cHex = `var(--color-${colName})`;
+            if(colName === 'dim') cHex = 'var(--text-muted)';
+            if(colName === 'green') cHex = 'var(--color-buy)';
+            if(colName === 'red') cHex = 'var(--color-sell)';
+            if(colName === 'yellow') cHex = 'var(--color-warn)';
+            
+            const div = document.createElement('div');
+            div.className = "sig-item";
+            div.style.color = cHex;
+            div.innerHTML = `<span>> ${msg}</span>`;
+            sigCont.appendChild(div);
+        });
+    }
 }
 
 function wrapUpAnalysis(cityKeys) {
@@ -264,8 +281,6 @@ function wrapUpAnalysis(cityKeys) {
     const timeStr = new Date().toLocaleTimeString();
     showStatus(`Данные синхронизированы: ${timeStr}`, "var(--text-secondary)");
 
-
-    // Trigger auto-AI
     if(document.getElementById("auto-ai-toggle").checked && cityKeys.length > 0) {
         const target = cityKeys.length === 1 ? cityKeys[0] : "both";
         setTimeout(() => analyzeChatTarget(target), 500);
@@ -288,7 +303,6 @@ async function refreshMarketPrices(cityKey) {
     
     showStatus(`Парсинг стакана заявок: ${cityKey}...`, "var(--text-primary)");
 
-    
     try {
         const res = await fetch(`/api/market-prices?city_key=${cityKey}&date_str=${dateStr}`);
         if(!res.ok) throw new Error("Price fetch failed");
@@ -299,7 +313,7 @@ async function refreshMarketPrices(cityKey) {
             const input = document.getElementById(`price-${cityKey}-${idx}`);
             if(input) {
                 input.value = prices[idx];
-                input.classList.add('updated-pulse'); // Visual feedback
+                input.classList.add('updated-pulse');
                 setTimeout(() => input.classList.remove('updated-pulse'), 2000);
             }
         }
@@ -308,41 +322,36 @@ async function refreshMarketPrices(cityKey) {
     } catch(e) {
         console.error(e);
         showStatus("Ошибка доступа к API Polymarket", "var(--color-sell)");
-
     }
 }
-
-// ---------------------------------------------------------
-//  AI CHAT LOGIC
-// ---------------------------------------------------------
 
 let chatHistory = [];
 
 function initAISettings() {
     const sel = document.getElementById("ai-model");
+    if(!sel) return;
+    sel.innerHTML = "";
     APP_CONFIG.ai_models.forEach(m => {
         const opt = document.createElement('option');
         opt.value = m.id; opt.innerText = m.label;
         sel.appendChild(opt);
     });
     
-    document.getElementById("ai-key").value = APP_CONFIG.ai_settings.key || "";
     if(APP_CONFIG.ai_settings.model) sel.value = APP_CONFIG.ai_settings.model;
 }
 
 async function saveSettings() {
-    const key = document.getElementById("ai-key").value.trim();
     const mid = document.getElementById("ai-model").value;
     
     await fetch("/api/settings", {
         method: "POST", headers: {"Content-Type": "application/json"},
-        body: JSON.stringify({api_key: key, model_id: mid})
+        body: JSON.stringify({model_id: mid})
     });
     
-    document.getElementById("ai-status-text").innerText = "КОНФИГУРАЦИЯ ПРИМЕНЕНА";
-    document.getElementById("ai-status-text").style.color = "var(--color-buy)";
-    setTimeout(()=> { document.getElementById("ai-status-text").innerText = "ГОТОВ"; document.getElementById("ai-status-text").style.color = "var(--text-secondary)"; }, 2000);
-
+    const s_el = document.getElementById("ai-status-text");
+    s_el.innerText = "КОНФИГУРАЦИЯ ПРИМЕНЕНА";
+    s_el.style.color = "var(--color-buy)";
+    setTimeout(()=> { s_el.innerText = "ГОТОВ"; s_el.style.color = "var(--text-secondary)"; }, 2000);
 }
 
 function appendMessage(role, text) {
@@ -354,12 +363,8 @@ function appendMessage(role, text) {
         div.innerHTML = `<div class="msg-you-lbl">> USER_INPUT</div><div>${escapeHtml(text)}</div>`;
     } else if (role === 'ai') {
         div.className = "msg msg-ai";
-        // Parse basic markdown colors
         let parsed = escapeHtml(text).replace(/\n/g, "<br>");
-        
         div.innerHTML = `<div class="msg-ai-lbl">> SYSTEM_RESPONSE</div><div>${parsed}</div>`;
-        
-        // Parse prices json back to UI
         const match = text.match(/PRICES_JSON:\s*(\{.*?\})/s);
         if(match) {
             try { applyAiPrices(JSON.parse(match[1])); } catch(e){}
@@ -378,7 +383,6 @@ function clearChat() {
     chatHistory = [];
     document.getElementById("ai-status-text").innerText = "ЛОГ ОЧИЩЕН";
     setTimeout(()=> document.getElementById("ai-status-text").innerText = "ГОТОВ", 2000);
-
 }
 
 async function sendChat(presetMsg = null, forceContext = false) {
@@ -387,22 +391,17 @@ async function sendChat(presetMsg = null, forceContext = false) {
     if(!msg) return;
     if(!presetMsg) inp.value = "";
     
-    const key = document.getElementById("ai-key").value.trim();
-    if(!key) {
-        appendMessage('sys', "⚠️ Укажите API Ключ в настройках."); return;
-    }
-
     appendMessage('you', msg);
     document.getElementById("ai-status-text").innerText = "ОБРАБОТКА...";
     document.getElementById("ai-status-text").style.color = "var(--color-highlight)";
-
     document.getElementById("btn-send").disabled = true;
 
     try {
+        const ctx = Object.values(LAST_RESULTS);
         const req = {
             message: msg,
             history: chatHistory,
-            data_context: Object.keys(LAST_RESULTS).length > 0 ? Object.values(LAST_RESULTS) : [],
+            data_context: ctx,
             force_context: forceContext
         };
         
@@ -412,34 +411,37 @@ async function sendChat(presetMsg = null, forceContext = false) {
         });
         
         const data = await res.json();
-        
-        // Add to abstract history
+        if(data.error) throw new Error(data.error);
+
         chatHistory.push({"role": "user", "content": msg});
-        if(!data.error) chatHistory.push({"role": "assistant", "content": data.reply});
+        chatHistory.push({"role": "assistant", "content": data.reply});
         
-        // Trim history
         if(chatHistory.length > 10) chatHistory = chatHistory.slice(-10);
-        
         appendMessage('ai', data.reply);
         
     } catch(e) {
-        appendMessage('sys', `❌ JS Error: ${e.message}`);
+        console.error(`[AI] Chat error:`, e);
+        appendMessage('sys', `❌ AI Error: ${e.message}`);
     } finally {
         document.getElementById("ai-status-text").innerText = "ГОТОВ";
         document.getElementById("ai-status-text").style.color = "var(--text-secondary)";
-
         document.getElementById("btn-send").disabled = false;
     }
 }
 
 function analyzeChatTarget(target) {
     const results = Object.values(LAST_RESULTS);
-    if(results.length === 0) { appendMessage('sys', "⚠️ Нет данных для анализа. Запросите данные погоды."); return; }
+    if(results.length === 0) { 
+        appendMessage('sys', "⚠️ Нет данных для анализа. Запросите данные погоды."); 
+        return; 
+    }
     
     let ctxRes = results;
     if(target !== 'both') ctxRes = results.filter(r => r.city_key === target);
-    
-    if(ctxRes.length === 0) { appendMessage('sys', `⚠️ Нет данных для выбранной цели.`); return; }
+    if(ctxRes.length === 0) { 
+        appendMessage('sys', `⚠️ Нет данных для выбранной цели.`); 
+        return; 
+    }
     
     sendChat("Проанализируй все данные по температуре на целевую дату. Дай математически обоснованный вердикт: стоит ли открывать позицию? ПРОАНАЛИЗИРУЙ САМОСТОЯТЕЛЬНО.", true);
 }
@@ -463,7 +465,6 @@ function applyAiPrices(pricesDict) {
         const cityObj = APP_CONFIG.cities[ck];
         if(!cityObj) continue;
         const prices = pricesDict[ck];
-        
         for (const rng in prices) {
             const idx = cityObj.ranges.indexOf(rng);
             if(idx !== -1) {
@@ -475,10 +476,20 @@ function applyAiPrices(pricesDict) {
 }
 
 function escapeHtml(unsafe) {
-    return unsafe
-         .replace(/&/g, "&amp;")
-         .replace(/</g, "&lt;")
-         .replace(/>/g, "&gt;")
-         .replace(/"/g, "&quot;")
-         .replace(/'/g, "&#039;");
+    return unsafe.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
 }
+
+let reloadState = { boot_id: null, last_mod: null };
+async function checkHotReload() {
+    try {
+        const res = await fetch("/api/health");
+        if (!res.ok) return;
+        const data = await res.json();
+        if (reloadState.boot_id && (data.boot_id !== reloadState.boot_id || data.last_mod > reloadState.last_mod)) {
+            window.location.reload();
+        }
+        reloadState.boot_id = data.boot_id;
+        reloadState.last_mod = data.last_mod;
+    } catch (e) {}
+}
+setInterval(checkHotReload, 2000);

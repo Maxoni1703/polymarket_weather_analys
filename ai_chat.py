@@ -25,6 +25,46 @@ _CFG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".ai_config
 
 GENAPI_URL = "https://proxy.gen-api.ru/v1/chat/completions"
 
+def call_genai(messages: list[dict], model_id: str = "gemini-1.5-flash-lite") -> str:
+    """
+    Вызывает Google GenAI (Gemini) с системным промптом и базой знаний.
+    """
+    cfg = load_ai_config()
+    api_key = cfg.get("key")
+    if not api_key:
+        return "❌ Ошибка: API ключ не найден в настройках или .env"
+
+    # Загружаем базу знаний из файла
+    kb_content = ""
+    kb_path = os.path.join(os.path.dirname(__file__), "knowledge_base.md")
+    if os.path.exists(kb_path):
+        try:
+            with open(kb_path, "r", encoding="utf-8") as f:
+                kb_content = f"\n\nДОПОЛНИТЕЛЬНАЯ БАЗА ЗНАНИЙ БОТА (ПРИОРИТЕТ):\n{f.read()}"
+        except:
+            pass
+
+    full_sys = _SYS + kb_content
+    
+    # Подготовка сообщений: системный промпт идет первым
+    full_messages = [{"role": "system", "content": full_sys}] + messages
+
+    try:
+        payload = {
+            "model": model_id,
+            "messages": full_messages,
+            "max_tokens": 1500,
+        }
+        headers = {
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        }
+        r = _req.post(GENAPI_URL, headers=headers, json=payload, timeout=60)
+        r.raise_for_status()
+        return r.json()["choices"][0]["message"]["content"].strip()
+    except Exception as e:
+        return f"❌ Ошибка API: {str(e)}"
+
 MODELS = [
     ("gemini-3-1-flash-lite",      "♊ Gemini 3.1 Flash Lite"),
     ("anthropic/claude-3.5-sonnet", "🎭 Claude 3.5 Sonnet"),

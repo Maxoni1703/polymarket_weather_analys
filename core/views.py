@@ -95,6 +95,13 @@ def analyze_city(request):
             models_raw=agg.get("models_raw", []) if agg else []
         )
         
+        # Save to DB for self-learning
+        from database import save_analysis
+        try:
+            save_analysis(ck, date_str, market_price, CITIES[ck]["ranges"][range_index], rec, a)
+        except Exception as db_err:
+            print(f"DB Error: {db_err}")
+
         return JsonResponse({
             "city_key": ck,
             "analysis": a,

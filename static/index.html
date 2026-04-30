@@ -1,0 +1,175 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Полимаркет Терминал</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+
+    <div class="app-container">
+        <!-- TOP STATUS BAR -->
+        <header class="main-header">
+            <div class="logo-area">
+                <div class="conn-status"></div>
+                <h1>BYWEATHER TERMINAL</h1>
+            </div>
+            <div class="clock-area">
+                <div class="clock">Лондон <span><span id="time-lon">--:--</span></span></div>
+                <div class="clock">Майами <span><span id="time-mia">--:--</span></span></div>
+                <div class="clock">UTC <span><span id="time-utc">--:--</span></span></div>
+            </div>
+        </header>
+
+        <!-- MAIN TERMINAL LAYOUT -->
+        <div class="main-layout">
+            
+            <div class="left-col">
+                <!-- Market Pairs (Grids) -->
+                <div class="grids-col" id="control-panels-container">
+                    <!-- Injected by JS -->
+                </div>
+
+                <!-- Execution Bar -->
+                <div class="actions-row">
+                    <button class="btn btn-london" onclick="analyzeCity('london')">Лондон (Анализ)</button>
+                    <button class="btn btn-miami" onclick="analyzeCity('miami')">Майами (Анализ)</button>
+                    <button class="btn btn-both" onclick="analyzeBoth()">Комплексный анализ</button>
+                    
+                    <div class="auto-ai-toggle">
+                        <input type="checkbox" id="auto-ai-toggle">
+                        <span>Алго ИИ</span>
+                    </div>
+                    
+                    <div class="status-box">
+                        <span style="color: var(--color-buy);">●</span> <span id="status-label">Готов к торгам</span>
+                    </div>
+                </div>
+
+                <!-- Analysis Book -->
+                <div class="results-grid" id="results-grid">
+                    <!-- Injected by JS -->
+                </div>
+            </div>
+
+            <!-- RIGHT COLUMN: AI Copilot -->
+            <div class="ai-area">
+                <div class="ai-header">
+                    <span>SYSTEM.AI_ASSISTANT</span>
+                    <span id="ai-status-text">IDLE</span>
+                </div>
+
+                <div class="ai-settings">
+                    <div class="setting-row">
+                        <span>API Ключ</span>
+                        <input type="password" id="ai-key" placeholder="GenAPI API Key">
+                    </div>
+                    <div class="setting-row">
+                        <span>Нейросеть</span>
+                        <select id="ai-model"></select>
+                    </div>
+                    <button class="btn-save" onclick="saveSettings()">Применить</button>
+                </div>
+
+                <div class="ai-quick-actions">
+                    <button class="btn-quick" onclick="sendChat('Найди текущие прогнозы погоды для Лондона и Майами на дату экспирации.')">Сводка</button>
+                    <button class="btn-quick" onclick="sendChat('Какие сейчас коэффициенты на рынке погоды Polymarket? Верни в формате PRICES_JSON.')">Книга заявок</button>
+                    <button class="btn-quick" onclick="sendChat('Дай независимую математическую оценку: открывать ли позицию на эту дату?')">Сигнал ИИ</button>
+                </div>
+                
+                <div class="ai-city-actions">
+                    <button class="btn-quick" onclick="analyzeChatTarget('london')">Анализ Лондон</button>
+                    <button class="btn-quick" onclick="analyzeChatTarget('miami')">Анализ Майами</button>
+                    <button class="btn-quick" onclick="analyzeChatTarget('both')">Комплекс</button>
+                    <button class="btn-quick" onclick="freeSearch()">Радар wttr.in</button>
+                    <button class="btn-quick" onclick="clearChat()">Очистить лог</button>
+                </div>
+
+                <div class="ai-chat-history" id="chat-history">
+                    <!-- Messages go here -->
+                </div>
+
+                <div class="ai-input-area">
+                    <textarea id="ai-input" placeholder="Команда для ИИ..." rows="1"></textarea>
+                    <button class="btn-send" id="btn-send" onclick="sendChat()">Отпр.</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- TEMPLATES -->
+    <template id="tmpl-control">
+        <div class="city-control" id="control-{id}">
+            <div class="city-header">
+                <h3>{name}/USD</h3>
+                <span class="station-name">{station}</span>
+            </div>
+            <div class="city-body">
+                <div class="input-groups-wrapper">
+                    <div class="input-group">
+                        <label>Спред (Диапазон)</label>
+                        <select id="range-{id}"></select>
+                    </div>
+                    <div class="input-group">
+                        <label>Дата экспирации</label>
+                        <input type="date" id="date-{id}">
+                        <div class="quick-dates">
+                            <button onclick="setDate('{id}', 0)">T+0</button>
+                            <button onclick="setDate('{id}', 1)">T+1</button>
+                            <button onclick="setDate('{id}', 2)">T+2</button>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="city-prices">
+                    <label>Книга заявок Polymarket (%):</label>
+                    <div class="price-grid" id="prices-{id}"></div>
+                </div>
+            </div>
+        </div>
+    </template>
+
+    <template id="tmpl-result">
+        <div class="result-card" id="res-{id}">
+            <div class="result-main">
+                <div>
+                    <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 4px;">INDEX: {id}</div>
+                    <div class="temp-primary" id="res-temp-main-{id}">--</div>
+                    <div class="temp-sub" id="res-temp-sub-{id}">--</div>
+                </div>
+                <div style="text-align: right;">
+                    <div style="font-size: 10px; color: var(--text-secondary); margin-bottom: 4px;">SIGNAL</div>
+                    <div class="verdict-score" id="res-verdict-{id}">WAIT</div>
+                </div>
+            </div>
+
+            <div class="obs-data">
+                <div id="res-wunder-{id}">METAR: НЕТ ДАННЫХ</div>
+                <div id="res-match-{id}">СОВПАДЕНИЕ: --</div>
+                <div id="res-peak-{id}">ФАЗА: --</div>
+                <div id="res-stake-{id}">Объем позиции: 0.0%</div>
+            </div>
+            
+            <div class="rec-panel" id="res-rec-{id}" style="color: var(--color-highlight); margin-bottom: 16px; font-size: 12px;"></div>
+
+            <div class="stats-row">
+                <div class="stat-box">
+                    <span class="stat-lbl">Текущая вероятность</span>
+                    <span class="stat-val" id="res-prob-{id}">--%</span>
+                </div>
+                <div class="stat-box">
+                    <span class="stat-lbl">Альфа (Перевес)</span>
+                    <span class="stat-val" id="res-edge-{id}">--</span>
+                </div>
+            </div>
+
+            <div class="signals-list" id="res-signals-{id}" style="display:none;"></div>
+        </div>
+    </template>
+
+    <script src="/static/app.js"></script>
+</body>
+</html>

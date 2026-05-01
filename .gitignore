@@ -1,4 +1,4 @@
-# Environment
+# Environment & Virtual Envs
 .env
 .venv
 env/
@@ -6,44 +6,60 @@ venv/
 ENV/
 env.bak/
 venv.bak/
+python_bin/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
 *$py.class
-
-# C extensions
 *.so
 
-# Distribution / packaging
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-lib/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-share/python-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-MANIFEST
+# Databases & Local Data
+history.db
+*.db
+*.db-journal
+*.db-shm
+*.db-wal
+db.sqlite3
+
+# Logs
+*.log
+logs/
+
+# Django specifics
+local_settings.py
+db.sqlite3
+db.sqlite3-journal
+media/
+staticfiles/
+admin_static/
+
+# Temporary, Debug & Scratch scripts
+check_db.py
+check_poly_format.py
+check_analysis.py
+migrate_db.py
+scratch/
+tmp/
+*.tmp
 
 # Project specifics
 .ai_config
 
-# IDEs
+# IDEs & Editors
 .idea/
 .vscode/
 *.swp
 *.swo
+*.sublime-project
+*.sublime-workspace
 
-# OS
+# OS specifics
 .DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
 Thumbs.db
+Desktop.ini

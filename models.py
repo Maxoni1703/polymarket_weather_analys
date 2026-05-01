@@ -159,8 +159,23 @@ def fetch_all_models_max(city_key: str,
 
 
 def aggregate_forecasts(models: list[tuple[str, float]], city_key: str) -> dict:
-    """Aggregates model forecasts."""
-    if not models:
+    """Aggregates model forecasts with historical bias correction."""
+    from database import get_model_corrections
+    corrections = get_model_corrections(city_key)
+    
+    adjusted_models = []
+    applied_corr_signals = []
+    
+    for name, val in models:
+        corr = corrections.get(name, 0)
+        if corr != 0:
+            adj_val = val - corr
+            adjusted_models.append((name, adj_val))
+            applied_corr_signals.append(f"{name}: {corr:+.1f}°C correction")
+        else:
+            adjusted_models.append((name, val))
+
+    if not adjusted_models:
         return {
             "consensus_max_c": None,
             "spread": None,
@@ -168,8 +183,10 @@ def aggregate_forecasts(models: list[tuple[str, float]], city_key: str) -> dict:
             "signals": [],
             "confidence": "low",
         }
-    values = [m[1] for m in models]
-    names = [m[0] for m in models]
+    
+    values = [m[1] for m in adjusted_models]
+    names = [m[0] for m in adjusted_models]
+    # ... (rest of the logic remains similar but uses values)
     avg = sum(values) / len(values)
     min_v, max_v = min(values), max(values)
     spread = max_v - min_v
@@ -198,6 +215,9 @@ def aggregate_forecasts(models: list[tuple[str, float]], city_key: str) -> dict:
     else:
         signals.append(("yellow", f"Model spread {spread:.1f}°C — uncertainty"))
         confidence = "low"
+
+    if applied_corr_signals:
+        signals.append(("cyan", "ML Corrections applied: " + ", ".join(applied_corr_signals)))
 
     detail = ", ".join(f"{n}={v:.1f}°C" for n, v in zip(names, values))
     signals.append(("cyan", f"Models ({len(models)}): {detail}"))

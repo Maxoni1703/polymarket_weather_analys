@@ -604,7 +604,12 @@ def compute_score(a, wunder, local_time, city_key, market_prob, range_idx, peak_
     pts = min(100, max(0, pts))
     our_prob = min(95, max(5, pts))
 
-    if pts >= 78:
+    # Корректируем вердикт на основе Edge
+    if edge is not None and edge < 5 and mkt_rec != "НЕТ":
+        verdict, bank = "⚠   ПРОПУСТИТЬ", "0%"
+    elif mkt_rec == "НЕТ":
+        verdict, bank = "✅  ВХОДИТЬ (НЕТ)", "3–5%"
+    elif pts >= 78:
         verdict, bank = "✅  ВХОДИТЬ", "5–7%"
     elif pts >= 62:
         verdict, bank = "⚡  ОСТОРОЖНО", "3–5%"
@@ -619,6 +624,7 @@ def compute_score(a, wunder, local_time, city_key, market_prob, range_idx, peak_
         "signals": sig, "edge": edge, "mkt_rec": mkt_rec,
         "in_range": in_range,
         "best_max_c": best_max_c, "best_max_f": c2f(best_max_c),
+        "models_raw": models_raw,
         "wunder_ok": wunder_ok, "auto_peak": auto_peak,
         "peak_done": peak_done,
         "local_str": lt["local_str"], "day_phase": lt["day_phase"],

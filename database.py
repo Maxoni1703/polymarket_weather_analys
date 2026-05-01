@@ -22,9 +22,12 @@ def init_db():
             in_range INTEGER,
             verdict TEXT,
             score_data TEXT,  -- JSON blob
-            analysis_data TEXT -- JSON blob
+            analysis_data TEXT, -- JSON blob
+            actual_max_c REAL,
+            is_resolved INTEGER DEFAULT 0
         )
     """)
+    cur.execute("CREATE TABLE IF NOT EXISTS model_biases (model_name TEXT, city_key TEXT, bias_sum REAL, count INTEGER, PRIMARY KEY(model_name, city_key))")
     conn.commit()
     conn.close()
 
@@ -45,8 +48,48 @@ def save_analysis(ck, date_str, market_price, range_name, sc, ao):
         json.dumps(sc),
         json.dumps(ao)
     ))
+    
+    # Если анализ завершен (пик прошел), сразу помечаем как actual
+    if sc.get("peak_done"):
+        cur.execute("UPDATE analyses SET actual_max_c = ?, is_resolved = 1 WHERE id = (SELECT LAST_INSERT_ROWID())", (sc.get("best_max_c"),))
+        _update_model_biases(ck, sc.get("models_raw"), sc.get("best_max_c"))
+
     conn.commit()
     conn.close()
+
+def _update_model_biases(city_key, models_raw, actual_c):
+    """
+    Обновляет статистику смещения (bias) для каждой модели.
+    bias = forecast - actual
+    """
+    if not models_raw or actual_c is None:
+        return
+    
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    for name, forecast in models_raw:
+        bias = forecast - actual_c
+        cur.execute("""
+            INSERT INTO model_biases (model_name, city_key, bias_sum, count)
+            VALUES (?, ?, ?, 1)
+            ON CONFLICT(model_name, city_key) DO UPDATE SET
+                bias_sum = bias_sum + EXCLUDED.bias_sum,
+                count = count + 1
+        """, (name, city_key, bias))
+    conn.commit()
+    conn.close()
+
+def get_model_corrections(city_key):
+    """
+    Возвращает среднее смещение для каждой модели: {model_name: avg_bias}
+    Если avg_bias > 0, значит модель завышает. Нужно вычитать.
+    """
+    conn = sqlite3.connect(DB_PATH)
+    cur = conn.cursor()
+    cur.execute("SELECT model_name, bias_sum, count FROM model_biases WHERE city_key = ?", (city_key,))
+    rows = cur.fetchall()
+    conn.close()
+    return {r[0]: r[1]/r[2] for r in rows if r[2] > 0}
     
     # После сохранения обновляем подсказки в .md
     update_knowledge_from_history()

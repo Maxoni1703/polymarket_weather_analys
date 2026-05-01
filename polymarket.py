@@ -219,11 +219,17 @@ def _match_markets_to_ranges(markets: list[dict], ranges: list[str],
     # Форматируем дату для поиска в question
     try:
         dt = datetime.strptime(date_str, "%Y-%m-%d")
+        day = dt.strftime("%d").lstrip("0")
+        month = dt.strftime("%B")
+        month_short = dt.strftime("%b")
+        
         date_variants = [
-            dt.strftime("%B %-d"),          # "March 11"  (Linux)
-            dt.strftime("%B %d").lstrip("0").replace(" 0", " "),  # "March 11"
-            dt.strftime("%b %d"),            # "Mar 11"
-            date_str,                        # "2026-03-11"
+            f"{month} {day}",           # "May 1"
+            f"{month_short} {day}",     # "May 1"
+            f"{month} {dt.strftime('%d')}", # "May 01"
+            f"{month} {day}, {dt.year}",
+            f"{month_short} {day}, {dt.year}",
+            date_str,                   # "2026-05-01"
         ]
     except Exception:
         date_variants = [date_str]
@@ -237,6 +243,11 @@ def _match_markets_to_ranges(markets: list[dict], ranges: list[str],
         if city_word not in question:
             continue
         
+        # Проверяем дату (чтобы не подтягивать цены из вчерашних/завтрашних рынков)
+        matched_date = any(v.lower() in question for v in date_variants)
+        if not matched_date:
+            continue
+
         price = _extract_yes_price(m)
         if price is None:
             continue

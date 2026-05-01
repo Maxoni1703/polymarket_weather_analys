@@ -140,11 +140,13 @@ def _build_context(city_data):
     lines = [f"🚨 TARGET DATE: {city_data[0].get('date','?')}", ""]
     for d in city_data:
         ck, ao, res = d.get("city_key"), d.get("analysis",{}), d.get("score",{})
+        m_price = d.get("market_price", "?")
         u = "°F" if ck=="miami" else "°C"
         t_val = res.get('best_max_c' if u=='°C' else 'best_max_f', 0)
         lines += [
             f"### {ck} ({d.get('selected_range','?')})",
             f"T_max: {t_val:.1f}{u} | Rain: {ao.get('precip_prob',0)}% | Wind: {ao.get('wind_max',0):.0f}km/h",
+            f"Market Price: {m_price}%",
             f"Verdict: {res.get('verdict','')} ({res.get('our_prob',0):.1f}%)", ""
         ]
     return "\n".join(lines)

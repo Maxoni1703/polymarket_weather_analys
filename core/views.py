@@ -5,11 +5,11 @@ import traceback
 from django.http import JsonResponse, HttpResponse, HttpResponseBadRequest
 from django.views.decorators.csrf import csrf_exempt
 
-from config import CITIES, T
-from weather import fetch_multimodel_forecast, fetch_wunderground, analyze_forecast, compute_score
-from polymarket import fetch_prices_for_ranges
-from utils import get_local_time
-from ai_chat import free_weather_search, load_ai_config, save_ai_config, _SYS, MODELS, GENAPI_URL
+from common.config import CITIES, T
+from api.weather import fetch_multimodel_forecast, fetch_wunderground, analyze_forecast, compute_score
+from api.polymarket import fetch_prices_for_ranges
+from common.utils import get_local_time
+from ai.ai_chat import free_weather_search, load_ai_config, save_ai_config, _SYS, MODELS, GENAPI_URL
 import uuid
 
 BOOT_ID = str(uuid.uuid4())
@@ -96,7 +96,7 @@ def analyze_city(request):
         )
         
         # Save to DB for self-learning
-        from database import save_analysis
+        from database.database import save_analysis
         try:
             save_analysis(ck, date_str, market_price, CITIES[ck]["ranges"][range_index], rec, a)
         except Exception as db_err:

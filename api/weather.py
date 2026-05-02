@@ -7,9 +7,9 @@ POLYMARKET WEATHER ANALYZER — Логика погоды v6.0
 import requests
 from datetime import datetime, timezone
 
-from config import CITIES
-from utils import c2f
-from models import fetch_all_models_max, aggregate_forecasts
+from common.config import CITIES
+from common.utils import c2f
+from database.models import fetch_all_models_max, aggregate_forecasts
 
 
 # ── AviationWeather METAR API ──────────────────────────────────
@@ -59,7 +59,7 @@ def _fetch_metar_max_today(icao: str, city_key: str) -> float | None:
     Максимальная темп из METAR за сегодня (до текущего момента).
     Используется AviationWeather API.
     """
-    from utils import _city_now
+    from common.utils import _city_now
     now = _city_now(city_key)
     # Сегодняшний день в локальном времени
     today = now.date()
@@ -74,7 +74,7 @@ def _fetch_metar_max_today(icao: str, city_key: str) -> float | None:
     today_temps = []
     # Конвертируем UTC наблюдения в локальное время для сравнения даты
     # Но проще проверить, совпадает ли дата в локальной зоне
-    import utils
+    from common import utils
     if getattr(utils, "_HAS_ZONEINFO", False):
         from zoneinfo import ZoneInfo
         tz = ZoneInfo(CITIES[city_key]["tz_name"])
@@ -122,7 +122,7 @@ def _fetch_aviation_weather(city_key: str) -> dict | None:
         return None
 
     try:
-        from utils import _city_now
+        from common.utils import _city_now
         r = requests.get(
             _AVIATION_API,
             params={"ids": icao, "format": "json", "hours": 1},
@@ -148,13 +148,13 @@ def _fetch_aviation_weather(city_key: str) -> dict | None:
             return None
 
         # High из наблюдений за сегодня
-        from utils import _city_now
+        from common.utils import _city_now
         now_local = _city_now(city_key)
         today_str = now_local.strftime("%Y-%m-%d")
 
         history = _fetch_metar_history(icao, hours=24)
         
-        import utils
+        from common import utils
         if getattr(utils, "_HAS_ZONEINFO", False):
             from zoneinfo import ZoneInfo
             tz = ZoneInfo(c["tz_name"])
@@ -203,7 +203,7 @@ def _fetch_wttr(city_key: str) -> dict | None:
         if city_key == "london" and not (-15 <= cur_c <= 40):
             return None
 
-        from utils import _city_now
+        from common.utils import _city_now
         now_local = _city_now(city_key)
         current_hour = now_local.hour
 

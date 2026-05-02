@@ -7,7 +7,7 @@ import subprocess
 import sys
 from datetime import datetime, timezone, timedelta
 
-from config import CITIES
+from common.config import CITIES
 
 # ── Ensure tzdata on Windows ─────────────────────────────────
 def _ensure_tzdata() -> bool:

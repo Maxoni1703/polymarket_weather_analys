@@ -15,13 +15,13 @@ from dotenv import load_dotenv, set_key
 
 import requests as _req
 
-from config import CITIES, T, F
+from common.config import CITIES, T, F
 
 # ─────────────────────────────────────────────────────────────
 #  CONFIG & MODELS — GenAPI
 # ─────────────────────────────────────────────────────────────
 
-_CFG_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".ai_config")
+_CFG_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".ai_config")
 
 GENAPI_URL = "https://proxy.gen-api.ru/v1/chat/completions"
 
@@ -36,7 +36,8 @@ def call_genai(messages: list[dict], model_id: str = "gemini-1.5-flash-lite") ->
 
     # Загружаем базу знаний из файла
     kb_content = ""
-    kb_path = os.path.join(os.path.dirname(__file__), "knowledge_base.md")
+    # Мы находимся в ai/, база в data/
+    kb_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data", "knowledge_base.md")
     if os.path.exists(kb_path):
         try:
             with open(kb_path, "r", encoding="utf-8") as f:
@@ -67,18 +68,13 @@ def call_genai(messages: list[dict], model_id: str = "gemini-1.5-flash-lite") ->
 
 MODELS = [
     ("gemini-3-1-flash-lite",      "♊ Gemini 3.1 Flash Lite"),
-    ("anthropic/claude-3.5-sonnet", "🎭 Claude 3.5 Sonnet"),
-    ("openai/gpt-4o",              "🧠 GPT-4o"),
-    ("google/gemini-pro-1.5",      "♊ Gemini 1.5 Pro"),
-    ("meta-llama/llama-3-70b",     "🦙 Llama 3 70B"),
-    ("mistralai/mistral-large",    "🌀 Mistral Large"),
-    ("perplexity/sonar-reasoning", "🔍 Perplexity Sonar"),
+   
 ]
 
 MODEL_IDS = [m[0] for m in MODELS]
 MODEL_LABELS = [m[1] for m in MODELS]
 
-_ENV_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)), ".env")
+_ENV_PATH = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), ".env")
 
 def load_ai_config():
     load_dotenv(_ENV_PATH)

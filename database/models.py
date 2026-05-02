@@ -6,8 +6,8 @@ Collecting max temperatures from multiple sources, aggregation.
 import requests
 from datetime import datetime
 
-from config import CITIES
-from utils import c2f, f2c
+from common.config import CITIES
+from common.utils import c2f, f2c
 
 # User-Agent for all requests
 UA = {"User-Agent": "PolymarketWeather/1.0"}
@@ -160,7 +160,7 @@ def fetch_all_models_max(city_key: str,
 
 def aggregate_forecasts(models: list[tuple[str, float]], city_key: str) -> dict:
     """Aggregates model forecasts with historical bias correction."""
-    from database import get_model_corrections
+    from database.database import get_model_corrections
     corrections = get_model_corrections(city_key)
     
     adjusted_models = []

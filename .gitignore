@@ -15,12 +15,14 @@ __pycache__/
 *.so
 
 # Databases & Local Data
-history.db
 *.db
 *.db-journal
 *.db-shm
 *.db-wal
 db.sqlite3
+data/history.db
+!data/knowledge_base.md
+!data/__init__.py
 
 # Logs
 *.log
@@ -35,10 +37,11 @@ staticfiles/
 admin_static/
 
 # Temporary, Debug & Scratch scripts
-check_db.py
-check_poly_format.py
-check_analysis.py
-migrate_db.py
+scripts/check_db.py
+scripts/check_poly_format.py
+scripts/check_analysis.py
+scripts/migrate_db.py
+scripts/test_sync.py
 scratch/
 tmp/
 *.tmp

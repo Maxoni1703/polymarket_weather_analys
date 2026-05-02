@@ -411,7 +411,7 @@ async function sendChat(presetMsg = null, forceContext = false) {
         });
         
         const data = await res.json();
-        if(data.error) throw new Error(data.error);
+        if(data.error) throw new Error(data.reply || "Unknown AI Error");
 
         chatHistory.push({"role": "user", "content": msg});
         chatHistory.push({"role": "assistant", "content": data.reply});

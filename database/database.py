@@ -3,8 +3,9 @@ import json
 import os
 from datetime import datetime
 
-DB_PATH = os.path.join(os.path.dirname(__file__), "history.db")
-KB_PATH = os.path.join(os.path.dirname(__file__), "knowledge_base.md")
+BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+DB_PATH = os.path.join(BASE_DIR, "data", "history.db")
+KB_PATH = os.path.join(BASE_DIR, "data", "knowledge_base.md")
 
 def init_db():
     conn = sqlite3.connect(DB_PATH)

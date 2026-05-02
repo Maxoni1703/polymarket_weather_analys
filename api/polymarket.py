@@ -24,7 +24,7 @@ TIMEOUT = 14
 
 _TAG_CACHE = {
     "miami":  100937,
-    "london": 100166,
+    "london": 104596, # Highest temperature
 }
 
 def _find_city_tag(city_key: str) -> int | None:
@@ -107,7 +107,7 @@ def _slug_for_range(city_key: str, range_label: str, date_str: str) -> str:
     if city_key == "miami":
         if "or higher" in range_label:
             val = re.findall(r'\d+', range_label)[0]
-            rng = f"{val}forавove" # "90forавove"
+            rng = f"{val}forhigher" # "90forhigher"
         elif "or below" in range_label:
             val = re.findall(r'\d+', range_label)[0]
             rng = f"{val}forbelow" # "75forbelow"
@@ -125,11 +125,15 @@ def _slug_for_range(city_key: str, range_label: str, date_str: str) -> str:
 def _fetch_by_slug(slug: str) -> dict | None:
     """Загружает маркет по точному slug."""
     try:
-        r = requests.get(f"{GAMMA}/markets/{slug}", headers=H, timeout=TIMEOUT)
+        url = f"{GAMMA}/markets/{slug}"
+        r = requests.get(url, headers=H, timeout=TIMEOUT)
         if r.status_code == 200:
             return r.json()
-    except Exception:
-        pass
+        elif r.status_code == 404:
+            # print(f"      [DEBUG] 404 for {slug}")
+            pass
+    except Exception as e:
+        print(f"      [DEBUG] Error fetching slug {slug}: {e}")
     return None
 
 
@@ -196,11 +200,11 @@ def fetch_prices_for_ranges(city_key: str, ranges: list[str],
     if tag_id:
         markets = _fetch_markets_by_tag(tag_id, limit=60)
         matched = _match_markets_to_ranges(markets, ranges, city_key, date_str)
-        if matched:
-            return matched
 
-    # ── Метод 2: по slug (перебираем каждый диапазон) ─────────────
+    # ── Метод 2: по slug (дозагружаем то, что не нашли) ───────────
     for idx, rng in enumerate(ranges):
+        if idx in matched:
+            continue
         slug = _slug_for_range(city_key, rng, date_str)
         m = _fetch_by_slug(slug)
         if m:
@@ -239,9 +243,13 @@ def _match_markets_to_ranges(markets: list[dict], ranges: list[str],
     for m in markets:
         question = m.get("question", "").lower()
         
-        # Проверяем что маркет про нужный город
+        # Проверяем что маркет про нужный город и именно про МАКСИМАЛЬНУЮ температуру
         if city_word not in question:
             continue
+        if "highest" not in question and "max" not in question:
+            # Для Лондона иногда просто "Will the temperature in London be..."
+            if city_key == "miami" or ("lowest" in question or "min " in question):
+                continue
         
         # Проверяем дату (чтобы не подтягивать цены из вчерашних/завтрашних рынков)
         matched_date = any(v.lower() in question for v in date_variants)
@@ -288,12 +296,34 @@ def _question_matches_range(question: str, gui_range: str, city_key: str) -> boo
             return True
             
     else:  # london °C
+        # Нормализуем
         r_norm = r.replace("°c", "").replace("°", "").replace(" ", "")
-        # "14" → ищем "14°c" или "be 14" в вопросе
-        if r_norm.isdigit() and f" {r_norm}°" in question.replace("°c", "°"):
-            return True
-        if r_norm.isdigit() and f"be {r_norm}" in q:
-            return True
+        
+        # "19" → ищем "19°c" или "19 c" или "19 degrees"
+        if r_norm.isdigit():
+            # ...
+            pass # previous logic handled by search below
+
+        # Граничные случаи для Лондона
+        if "or higher" in r:
+            val = re.findall(r'\d+', r)[0]
+            if val in q and ("above" in q or "higher" in q or "≥" in q or ">=" in q):
+                return True
+        if "or below" in r:
+            val = re.findall(r'\d+', r)[0]
+            if val in q and ("below" in q or "lower" in q or "≤" in q or "<=" in q):
+                return True
+
+        if r_norm.isdigit():
+            # Вариант 1: "19°C"
+            if f"{r_norm}°c" in q or f"{r_norm}°" in q:
+                return True
+            # Вариант 2: "19 c"
+            if f"{r_norm} c" in q:
+                return True
+            # Вариант 3: просто "19" как отдельное число
+            if re.search(rf"\b{r_norm}\b", q):
+                return True
 
     return False
 

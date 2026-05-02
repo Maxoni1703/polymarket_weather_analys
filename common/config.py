@@ -50,8 +50,8 @@ CITIES = {
         "wunder_url": "https://www.wunderground.com/dashboard/pws/IEGLL",
         "wunder_station": "EGLL / Heathrow",
         "wunder_url2": "https://www.wunderground.com/weather/gb/london",
-        "ranges":     ["5°C", "6°C", "7°C", "8°C", "9°C", "10°C",
-                      "11°C", "12°C", "13°C", "14°C", "15°C", "16°C", "17°C"],
+        "ranges":     ["14°C", "15°C", "16°C", "17°C", "18°C", "19°C", "20°C",
+                      "21°C", "22°C", "23°C", "24°C", "25°C or higher"],
         "range_type": "exact",
         "tips": [
             "Heathrow is 1–2°C warmer than the center",
